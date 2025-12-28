@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express Shopping | Luxury Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --main-gradient: linear-gradient(135deg, #FF0050 0%, #ff5e95 100%);
+            --accent-gold: #FFD700;
+            --card-bg: #ffffff;
+            --shadow-lux: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        body { font-family: 'Cairo', sans-serif; margin: 0; background-color: #f8f9fa; }
+
+        header {
+            background: var(--main-gradient); color: white; padding: 20px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 20px rgba(255, 0, 80, 0.3);
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .logo { font-size: 28px; font-weight: 900; letter-spacing: 1px; }
+
+        .hero {
+            height: 380px; background: var(--main-gradient);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center;
+            clip-path: polygon(0 0, 100% 0, 100% 88%, 0 100%);
+            margin-bottom: 40px;
+        }
+        .hero h1 { font-size: 3.5rem; margin: 0; text-shadow: 3px 3px 10px rgba(0,0,0,0.2); }
+
+        .container {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px; padding: 20px 5% 30px;
+        }
+
+        .card { background: var(--card-bg); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lux); transition: 0.4s ease-in-out; }
+        .card:hover { transform: translateY(-10px); }
+        .card img { width: 100%; height: 320px; object-fit: cover; }
+        .card-body { padding: 20px; text-align: right; }
+        .card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; display: block; color: #333; }
+
+        .price-rating-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .price-tag { font-size: 1.6rem; color: #FF0050; font-weight: 800; line-height: 1; }
+        .left-details { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+        .rating { color: var(--accent-gold); font-size: 11px; display: flex; gap: 2px; align-items: center; }
+        .rating-num { color: #888; font-size: 0.7rem; margin-right: 4px; font-weight: bold; }
+        .meta-info { font-size: 0.75rem; color: #777; font-weight: bold; }
+
+        .card-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-buy { background: var(--main-gradient); color: white; text-decoration: none; flex-grow: 1; padding: 12px; border-radius: 50px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(255, 0, 80, 0.3); transition: 0.3s; }
+        .btn-share { background-color: #000000; color: #ffffff; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: none; cursor: pointer; transition: 0.3s; }
+        
+        /* إشعار النسخ الاحترافي */
+        #copyToast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 30px;
+            border-radius: 50px; z-index: 10000; display: none; font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: fadeInOut 2s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -40%); }
+            15% { opacity: 1; transform: translate(-50%, -50%); }
+            85% { opacity: 1; transform: translate(-50%, -50%); }
+            100% { opacity: 0; transform: translate(-50%, -60%); }
+        }
+
+        .load-more-container { text-align: center; padding: 20px 0 60px; min-height: 50px; }
+        #btnLoadMore {
+            display: none; margin: 0 auto; background: white; color: #FF0050; border: 2px solid #FF0050;
+            padding: 12px 40px; border-radius: 50px; font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 1.1rem;
+        }
+
+        @media (max-width: 600px) {
+            .container { grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+            .card img { height: 210px; }
+            .hero h1 { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header><div class="logo">EXPRESS</div></header>
+
+<section class="hero">
+    <h1>Express For Luxury</h1>
+    <p>لمسة من الفخامة في كل قطعة</p>
+</section>
+
+<div class="container" id="productsGrid"></div>
+
+<div class="load-more-container">
+    <button id="btnLoadMore">عرض المزيد</button>
+</div>
+
+<div id="copyToast">تم نسخ رابط المنتج بنجاح!</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAP8RWZdXy3RzS9gsZvfANyW1KEVgSheTo",
+        authDomain: "express-for-luxury-products.firebaseapp.com",
+        projectId: "express-for-luxury-products",
+        databaseURL: "https://express-for-luxury-products-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let allProducts = [];
+    let displayedCount = 24;
+
+    // وظيفة توليد النجوم بشكل احترافي ومتغير
+    function generateStars(rating) {
+        let r = parseFloat(rating);
+        // إذا لم يوجد تقييم في قاعدة البيانات، نضع تقييم عشوائي بين 4 و 5 لشكل أجمل
+        if (isNaN(r) || r === 0) {
+            r = (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1);
+        }
+        
+        let starsHTML = `<span class="rating-num">${r}</span>`;
+        for (let i = 1; i <= 5; i++) {
+            if (r >= i) starsHTML += '<i class="fas fa-star"></i>';
+            else if (r >= i - 0.5) starsHTML += '<i class="fas fa-star-half-alt"></i>';
+            else starsHTML += '<i class="far fa-star"></i>';
+        }
+        return starsHTML;
+    }
+
+    // وظيفة المشاركة مع إشعار مخصص
+    async function shareProduct(title, url) {
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: title, url: url });
+            } catch (err) {
+                copyToClipboard(url);
+            }
+        } else {
+            copyToClipboard(url);
+        }
+    }
+
+    function copyToClipboard(url) {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        
+        // إظهار الإشعار المخصص في وسط الشاشة
+        const toast = document.getElementById('copyToast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    db.ref('products').on('value', (snapshot) => {
+        allProducts = [];
+        snapshot.forEach((child) => {
+            allProducts.unshift(child.val());
+        });
+        renderProducts();
+    });
+
+    function renderProducts() {
+        const grid = document.getElementById('productsGrid');
+        const btn = document.getElementById('btnLoadMore');
+        grid.innerHTML = '';
+        
+        const toShow = allProducts.slice(0, displayedCount);
+        
+        toShow.forEach((item) => {
+            const imgSrc = Array.isArray(item.images) ? item.images[0] : item.images;
+            grid.innerHTML += `
+                <div class="card">
+                    <img src="${imgSrc || ''}" onerror="this.src='https://via.placeholder.com/300x400?text=Express+Luxury'">
+                    <div class="card-body">
+                        <span class="card-title">${item.name_ar}</span>
+                        <div class="price-rating-row">
+                            <span class="price-tag">${item.price}$</span>
+                            <div class="left-details">
+                                <div class="rating">${generateStars(item.rating)}</div>
+                                <div class="meta-info">${item.size || ''} ${item.color ? '| ' + item.color : ''}</div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <a href="${item.link_ar}" target="_blank" class="btn-buy"><i class="fas fa-cart-plus"></i> اطلب الآن</a>
+                            <button class="btn-share" onclick="shareProduct('${item.name_ar}', '${item.link_ar}')">
+                                <i class="fas fa-share-nodes"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (allProducts.length > 0) {
+            btn.style.display = "inline-block";
+            if (displayedCount >= allProducts.length) {
+                btn.innerText = "لا يوجد المزيد";
+                btn.onclick = null;
+                btn.style.opacity = "0.5";
+            } else {
+                btn.innerText = "عرض المزيد";
+                btn.onclick = loadMore;
+                btn.style.opacity = "1";
+            }
+        }
+    }
+
+    function loadMore() {
+        displayedCount += 24;
+        renderProducts();
+    }
+</script>
+</body>
+</html>
